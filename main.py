@@ -26,3 +26,16 @@ if __name__ == '__main__':
     display_image_widget = DisplayImageWidget()
     display_image_widget.show()
     sys.exit(app.exec_())
+
+'''
+QObject::moveToThread: Current thread (0xba3620) is not the object's thread (0x10a4920).
+Cannot move to target thread (0xba3620)
+
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "/home/user-name/.local/lib/python3.8/site-packages/cv2/qt/plugins" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: xcb, eglfs, linuxfb, minimal, minimalegl, offscreen, vnc, wayland-egl, wayland, wayland-xcomposite-egl, wayland-xcomposite-glx, webgl.
+
+Aborted (core dumped)
+
+'''
