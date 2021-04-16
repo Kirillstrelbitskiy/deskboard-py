@@ -21,6 +21,7 @@ min_diff = 3
 
 count = 1
 prev_exist = False
+prev_screenCnt = [[[]]]
 
 while True:
     if webCamFeed:success, image = cap.read()
