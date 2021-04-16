@@ -1,41 +1,82 @@
-from PyQt5 import QtGui, QtCore, QtWidgets
 import cv2
-import sys
+from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QHBoxLayout, QMessageBox
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import QThread, QTimer
 
-class DisplayImageWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(DisplayImageWidget, self).__init__(parent)
+class Camera:
+    def __init__(self, camera):
+        self.camera = camera
+        self.cap = None
 
-        self.button = QtWidgets.QPushButton('Show picture')
-        self.button.clicked.connect(self.show_image)
-        self.image_frame = QtWidgets.QLabel()
+    def openCamera(self):
+        self.vc = cv2.VideoCapture(0)
+        # vc.set(5, 30)  #set FPS
+        self.vc.set(3, 640)  # set width
+        self.vc.set(4, 480)  # set height
 
-        self.layout = QtWidgets.QVBoxLayout()
-        self.layout.addWidget(self.button)
-        self.layout.addWidget(self.image_frame)
-        self.setLayout(self.layout)
+        if not self.vc.isOpened():
+            print('failure')
+            msgBox = QMessageBox()
+            msgBox.setText("Failed to open camera.")
+            msgBox.exec_()
+            return
 
-    @QtCore.pyqtSlot()
-    def show_image(self):
-        self.image = cv2.imread('placeholder4.PNG')
-        self.image = QtGui.QImage(self.image.data, self.image.shape[1], self.image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
-        self.image_frame.setPixmap(QtGui.QPixmap.fromImage(self.image))
+    def initialize(self):
+        self.cap = cv2.VideoCapture(self.camera)
 
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    display_image_widget = DisplayImageWidget()
-    display_image_widget.show()
-    sys.exit(app.exec_())
 
-'''
-QObject::moveToThread: Current thread (0xba3620) is not the object's thread (0x10a4920).
-Cannot move to target thread (0xba3620)
+class UI_Window(QWidget):
+    def __init__(self, camera = None):
+        super().__init__()
+        self.camera = camera
 
-qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "/home/user-name/.local/lib/python3.8/site-packages/cv2/qt/plugins" even though it was found.
-This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.nextFrameSlot)
 
-Available platform plugins are: xcb, eglfs, linuxfb, minimal, minimalegl, offscreen, vnc, wayland-egl, wayland, wayland-xcomposite-egl, wayland-xcomposite-glx, webgl.
+        layout = QVBoxLayout()
 
-Aborted (core dumped)
+        button_layout = QHBoxLayout()
 
-'''
+        btnCamera = QPushButton("Open camera")
+        btnCamera.clicked.connect(self.start)
+        button_layout.addWidget(btnCamera)
+        layout.addLayout(button_layout)
+
+        self.label = QLabel()
+        self.label.setFixedSize(640, 640)
+
+        layout.addWidget(self.label)
+
+        self.setLayout(layout)
+        self.setWindowTitle("First GUI with QT")
+        self.setFixedSize(800, 800)
+
+       
+
+    def start(self):
+        camera.openCamera()
+        self.timer.start(1000. / 24)
+     
+    def nextFrameSlot(self):
+
+        rval, frame = camera.vc.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = QImage(frame, frame.shape[1], frame.shape[0], QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(image)
+        self.label.setPixmap(pixmap)
+
+class MovieThread(QThread):
+    def __init__(self, camera):
+        super().__init__()
+        self.camera = camera
+
+    def run(self):
+        self.camera.acquire_movie(200)
+
+
+
+camera = Camera(0)
+app = QApplication([])
+start_window = UI_Window(camera)
+start_window.show()
+app.exit(app.exec_())
