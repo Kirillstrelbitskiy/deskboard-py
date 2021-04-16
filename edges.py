@@ -1,12 +1,11 @@
 # import the necessary packages
 from imutils.perspective import four_point_transform
 from skimage.filters import threshold_local
-import numpy as np
-import argparse
 from cv2 import cv2
-import imutils
-import time
-import helpers
+import numpy as np
+import argparse, imutils, time, helpers
+import pyvirtualcam
+from pyvirtualcam import PixelFormat
 
 helpers.initializeTrackbars()
 
@@ -24,74 +23,66 @@ count = 1
 prev_exist = False
 prev_screenCnt = [[[]]]
 
-while True:
-    if webCamFeed:success, image = cap.read()
-    else: image = cv2.imread(pathImage)
-    image = cv2.resize(image, (widthImg, heightImg))
-    image_original = image
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (5, 5), 1)
+with pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR) as cam:
+    print(f'Virtual cam started: {cam.device} ({cam.width}x{cam.height} @ {cam.fps}fps)')
+    while True:
+        if webCamFeed:success, image = cap.read()
+        else: image = cv2.imread(pathImage)
+        image = cv2.resize(image, (widthImg, heightImg))
+        image_original = image
 
-    val = helpers.valTrackbars()
-    # val = [60, 0]
-    edged = cv2.Canny(gray, val[0], val[1])
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (5, 5), 1)
 
-    cv2.imshow("Image", image)
-    cv2.imshow("Edged", edged)
+        val = helpers.valTrackbars()
+        # val = [60, 0]
+        edged = cv2.Canny(gray, val[0], val[1])
 
-    cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    cnts = sorted(cnts, key = cv2.contourArea, reverse = True)
+        cv2.imshow("Image", image)
+        cv2.imshow("Edged", edged)
 
-    screenCnt, square = helpers.biggestContour(cnts)
+        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        cnts = sorted(cnts, key = cv2.contourArea, reverse = True)
 
-    if square > 0:
-        update = True
+        screenCnt, square = helpers.biggestContour(cnts)
+
+        if square > 0:
+            update = True
+
+            if prev_exist:
+                for i in range(len(screenCnt)):
+                    for j in range(len(screenCnt[i][0])):
+                        if(abs(screenCnt[i][0][j] - prev_screenCnt[i][0][j]) < min_diff):
+                            update = False
+
+
+            if update:
+                prev_screenCnt = screenCnt
+                prev_exist = True
+            else:
+                screenCnt = prev_screenCnt
 
         if prev_exist:
-            for i in range(len(screenCnt)):
-                for j in range(len(screenCnt[i][0])):
-                    if(abs(screenCnt[i][0][j] - prev_screenCnt[i][0][j]) < min_diff):
-                        update = False
-            print(screenCnt)
-            print(prev_screenCnt)
+            cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
+            cv2.imshow("Outline", image)
 
-            # time.sleep(100)
+            warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
+            warped = warped[borders_width:warped.shape[0] - borders_width, borders_width:warped.shape[1] - borders_width]
+            
+            warped = cv2.resize(warped, (widthImg, heightImg))
 
+            # colors magic
+            # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
+            # warped = (warped > T).astype("uint8") * 255
 
-        if update:
-            prev_screenCnt = screenCnt
-            prev_exist = True
-        else:
-            screenCnt = prev_screenCnt
+            cv2.imshow("OO", image_original)
+            cv2.imshow("Warped", warped)
 
-    if(prev_exist):
-        cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
-        cv2.imshow("Outline", image)
+            cam.send(warped)
+            cam.sleep_until_next_frame()
 
-        warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
-        # warped = warped[borders_width:warped.shape[0] - borders_width, borders_width:warped.shape[1] - borders_width]
-        # colors magic
-        # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-        # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-        # warped = (warped > T).astype("uint8") * 255
-
-        cv2.imshow("OO", image_original)
-        cv2.imshow("Warped", cv2.resize(warped, (widthImg, heightImg)))
-
-    if cv2.waitKey(1) and 0xFF == ord('s'):
-        count += 1
-
-
-'''
-[[1054  302]
- [ 779  113]
- [ 320  262]
- [ 476  638]]
-
-[[1138  433]
- [ 882  156]
- [ 386  225]
- [ 379  623]]
-'''
+        if cv2.waitKey(1) and 0xFF == ord('s'):
+            count += 1
