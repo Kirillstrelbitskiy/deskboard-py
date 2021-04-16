@@ -1,5 +1,5 @@
 # import the necessary packages
-from pyimagesearch import four_point_transform
+from imutils.perspective import four_point_transform
 from skimage.filters import threshold_local
 import numpy as np
 import argparse
@@ -18,6 +18,7 @@ widthImg  = 1280
 # helpers.set_res(cap, widthImg, heightImg)
 
 min_diff = 3
+borders_width = 5
 
 count = 1
 prev_exist = False
@@ -66,16 +67,31 @@ while True:
             screenCnt = prev_screenCnt
 
     if(prev_exist):
-        cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 2)
+        cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
         cv2.imshow("Outline", image)
 
         warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
-
+        # warped = warped[borders_width:warped.shape[0] - borders_width, borders_width:warped.shape[1] - borders_width]
+        # colors magic
         # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
         # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
         # warped = (warped > T).astype("uint8") * 255
 
-        cv2.imshow("Warped", warped)
+        cv2.imshow("OO", image_original)
+        cv2.imshow("Warped", cv2.resize(warped, (widthImg, heightImg)))
 
     if cv2.waitKey(1) and 0xFF == ord('s'):
         count += 1
+
+
+'''
+[[1054  302]
+ [ 779  113]
+ [ 320  262]
+ [ 476  638]]
+
+[[1138  433]
+ [ 882  156]
+ [ 386  225]
+ [ 379  623]]
+'''
