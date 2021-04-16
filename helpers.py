@@ -10,7 +10,7 @@ def initializeTrackbars(intialTracbarVals=0):
     cv2.namedWindow("Trackbars")
     cv2.resizeWindow("Trackbars", 360, 240)
     cv2.createTrackbar("Threshold1", "Trackbars", 320,500, nothing)
-    cv2.createTrackbar("Threshold2", "Trackbars", 210, 500, nothing)
+    cv2.createTrackbar("Threshold2", "Trackbars", 50, 500, nothing)
 
  
 def nothing(x):
@@ -34,3 +34,16 @@ def biggestContour(contours):
                 biggest = approx
                 max_area = area
     return biggest,max_area
+
+def reorder(myPoints):
+    myPoints = myPoints.reshape((4, 2))
+    myPointsNew = np.zeros((4, 1, 2), dtype=np.int32)
+    add = myPoints.sum(1)
+ 
+    myPointsNew[0] = myPoints[np.argmin(add)]
+    myPointsNew[3] =myPoints[np.argmax(add)]
+    diff = np.diff(myPoints, axis=1)
+    myPointsNew[1] =myPoints[np.argmin(diff)]
+    myPointsNew[2] = myPoints[np.argmax(diff)]
+ 
+    return myPointsNew
