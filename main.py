@@ -129,7 +129,7 @@ class UI_Window(QWidget):
                 screenCnt = prev_screenCnt
 
         if prev_exist:
-            cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
+            # cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
             # cv2.imshow("Outline", image)
 
             warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
@@ -137,13 +137,15 @@ class UI_Window(QWidget):
             
 
             # colors magic
-            warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)W
             # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
             # warped = (warped > T).astype("uint8") * 255
 
             # cv2.imshow("OO", image_original)
             # cv2.imshow("Warped", warped)
             
+            warped = cv2.resize(warped, (widthImg, heightImg))
+
             with pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR) as self.cam:
                 self.cam.send(warped)
                 self.cam.sleep_until_next_frame()
