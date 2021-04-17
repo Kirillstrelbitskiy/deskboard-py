@@ -1,5 +1,5 @@
 from pyvirtualcam import PixelFormat
-from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox, QSlider
+from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox, QSlider, QComboBox
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, QTimer, Qt
 from imutils.perspective import four_point_transform
@@ -11,8 +11,7 @@ import pyvirtualcam
 
 # helpers.initializeTrackbars()
 
-webCamFeed = True
-cap = cv2.VideoCapture(0)
+# cap = cv2.VideoCapture(0)
 heightImg = 1080
 widthImg  = 1920
 
@@ -29,20 +28,35 @@ prev_screenCnt = [[[]]]
 
 class UI_Window(QWidget):
     def __init__(self, camera = None):
-            super().__init__()
+            super().__init__()            
             self.timer = QTimer()
             self.timer.timeout.connect(self.nextFrameSlot)
+            
+            self.streamActivated = False
+            self.webCamFeed = False
+
+            # cameras activation
+            self.findCameras()
+            if len(self.cameras) > 0:
+                self.cap = cv2.VideoCapture(self.cameras[0])
+                self.webCamFeed = True
 
             layout = QGridLayout()
             layout.setSpacing(10)
+            
+            listCamerasLayout = QHBoxLayout()
+            listCameras = QComboBox()
+            listCameras.addItems(map(str, self.cameras))
+            listCameras.activated[int].connect(self.changeCamera)
 
-            button_layout = QHBoxLayout()
+            labelCameras = QLabel()
+            labelCameras.setText("Select camera from the list:")
 
-            btnCamera = QPushButton("Open camera")
-            # btnCamera.clicked.connect(self.start)
-            button_layout.addWidget(btnCamera)
-            layout.addLayout(button_layout, 0, 0)
+            listCamerasLayout.addWidget(labelCameras)
+            listCamerasLayout.addWidget(listCameras)
+            layout.addLayout(listCamerasLayout, 0, 0)
 
+            # video previewes
             self.videoOrig = QLabel()
             self.videoOrig.setFixedSize(widthImgSmall, heightImgSmall)
             self.videoLines = QLabel()
@@ -54,6 +68,8 @@ class UI_Window(QWidget):
             layout.addWidget(self.videoLines, 1, 1)
             layout.addWidget(self.videoWraped, 2, 1)
 
+            # sliders seetings
+            sliders_layout = QVBoxLayout()
             self.val1_sl = QSlider(Qt.Horizontal)
             self.val1_sl.setMinimum(0)
             self.val1_sl.setMaximum(300)
@@ -61,7 +77,7 @@ class UI_Window(QWidget):
             self.val1_sl.setTickPosition(QSlider.TicksBelow)
             self.val1_sl.setTickInterval(2)
 
-            layout.addWidget(self.val1_sl, 1, 0)
+            sliders_layout.addWidget(self.val1_sl)
 
             self.val2_sl = QSlider(Qt.Horizontal)
             self.val2_sl.setMinimum(0)
@@ -70,91 +86,116 @@ class UI_Window(QWidget):
             self.val2_sl.setTickPosition(QSlider.TicksBelow)
             self.val2_sl.setTickInterval(2)
 
-            layout.addWidget(self.val2_sl, 2, 0)
+            sliders_layout.addWidget(self.val2_sl)
+
+            layout.addLayout(sliders_layout, 1, 0)
+
+            # stream activation
+            btnActivate = QPushButton("Start stream")
+            btnActivate.clicked.connect(self.activateStream)
+            layout.addWidget(btnActivate, 2, 0)
 
             self.setLayout(layout)
             self.setWindowTitle("First GUI with QT")
-            self.setFixedSize(widthImg, heightImg)
+            # self.setFixedSize(widthImg, heightImg)
 
-            self.timer.start(1000. / 24)
+            self.timer.start(1000. / 24)  
+    
+    def changeCamera(self, camera):
+        if self.cap.isOpened():
+            self.cap.release()
+        self.cap = cv2.VideoCapture(camera)
 
-    # def start(self):
-        
-     
+    def findCameras(self):
+        num = 100
+        self.cameras = []
+        for index in range(num):
+            device = cv2.VideoCapture(index)
+            if device.isOpened():
+                self.cameras.append(index)
+            device.release()
+
+        print(self.cameras)
+
+    def activateStream(self):
+        self.streamActivated = True
+        self.cam = pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR)
+
     def nextFrameSlot(self):
         global prev_exist
         global prev_screenCnt
 
-        if webCamFeed:success, image = cap.read()
-        image = cv2.resize(image, (widthImg, heightImg))
-        image_original = image
+        if self.webCamFeed:
+            success, image = self.cap.read()
+            image = cv2.resize(image, (widthImg, heightImg))
+            image_original = image
 
-        img_orig_rsz = cv2.resize(image_original, (widthImgSmall, heightImgSmall))
-        imgLines = QImage(img_orig_rsz, img_orig_rsz.shape[1], img_orig_rsz.shape[0], QImage.Format_RGB888).rgbSwapped()
-        pixmap = QPixmap.fromImage(imgLines)
-        self.videoOrig.setPixmap(pixmap)
+            img_orig_rsz = cv2.resize(image_original, (widthImgSmall, heightImgSmall))
+            imgLines = QImage(img_orig_rsz, img_orig_rsz.shape[1], img_orig_rsz.shape[0], QImage.Format_RGB888).rgbSwapped()
+            pixmap = QPixmap.fromImage(imgLines)
+            self.videoOrig.setPixmap(pixmap)
 
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (5, 5), 1)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cv2.GaussianBlur(gray, (5, 5), 1)
 
-        # val = helpers.valTrackbars()
-        val = [self.val1_sl.value(), self.val2_sl.value()]
-        edged = cv2.Canny(gray, val[0], val[1])
+            # val = helpers.valTrackbars()
+            val = [self.val1_sl.value(), self.val2_sl.value()]
+            edged = cv2.Canny(gray, val[0], val[1])
 
-        edged_rsz = cv2.resize(edged, (widthImgSmall, heightImgSmall))
-        imgLines = QImage(edged_rsz, edged_rsz.shape[1], edged_rsz.shape[0], QImage.Format_Grayscale8)
-        pixmap = QPixmap.fromImage(imgLines)
-        self.videoLines.setPixmap(pixmap)
+            edged_rsz = cv2.resize(edged, (widthImgSmall, heightImgSmall))
+            imgLines = QImage(edged_rsz, edged_rsz.shape[1], edged_rsz.shape[0], QImage.Format_Grayscale8)
+            pixmap = QPixmap.fromImage(imgLines)
+            self.videoLines.setPixmap(pixmap)
 
-        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        cnts = sorted(cnts, key = cv2.contourArea, reverse = True)
+            cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            cnts = sorted(cnts, key = cv2.contourArea, reverse = True)
 
-        screenCnt, square = helpers.biggestContour(cnts)
+            screenCnt, square = helpers.biggestContour(cnts)
 
-        if square > 0:
-            update = True
+            if square > 0:
+                update = True
+
+                if prev_exist:
+                    for i in range(len(screenCnt)):
+                        for j in range(len(screenCnt[i][0])):
+                            if(abs(screenCnt[i][0][j] - prev_screenCnt[i][0][j]) < min_diff):
+                                update = False
+
+
+                if update:
+                    prev_screenCnt = screenCnt
+                    prev_exist = True
+                else:
+                    screenCnt = prev_screenCnt
 
             if prev_exist:
-                for i in range(len(screenCnt)):
-                    for j in range(len(screenCnt[i][0])):
-                        if(abs(screenCnt[i][0][j] - prev_screenCnt[i][0][j]) < min_diff):
-                            update = False
+                # cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
+                # cv2.imshow("Outline", image)
 
+                warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
+                warped = warped[borders_width:warped.shape[0] - borders_width, borders_width:warped.shape[1] - borders_width]
+                
 
-            if update:
-                prev_screenCnt = screenCnt
-                prev_exist = True
-            else:
-                screenCnt = prev_screenCnt
+                # colors magic
+                # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)W
+                # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
+                # warped = (warped > T).astype("uint8") * 255
 
-        if prev_exist:
-            # cv2.drawContours(image, [prev_screenCnt], -1, (0, 255, 0), 1)
-            # cv2.imshow("Outline", image)
+                # cv2.imshow("OO", image_original)
+                # cv2.imshow("Warped", warped)
+                
+                warped = cv2.resize(warped, (widthImg, heightImg))
+                
+                if self.streamActivated:
+                    self.cam.send(warped)
+                    self.cam.sleep_until_next_frame()
 
-            warped = four_point_transform(image_original, prev_screenCnt.reshape(4, 2))
-            warped = warped[borders_width:warped.shape[0] - borders_width, borders_width:warped.shape[1] - borders_width]
-            
+                warped = cv2.resize(warped, (widthImgSmall, heightImgSmall))
 
-            # colors magic
-            # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)W
-            # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-            # warped = (warped > T).astype("uint8") * 255
-
-            # cv2.imshow("OO", image_original)
-            # cv2.imshow("Warped", warped)
-            
-            warped = cv2.resize(warped, (widthImg, heightImg))
-
-            with pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR) as self.cam:
-                self.cam.send(warped)
-                self.cam.sleep_until_next_frame()
-
-            warped = cv2.resize(warped, (widthImgSmall, heightImgSmall))
-
-            img = QImage(warped, warped.shape[1], warped.shape[0], QImage.Format_RGB888).rgbSwapped()
-            pixmap = QPixmap.fromImage(img)
-            self.videoWraped.setPixmap(pixmap)
+                img = QImage(warped, warped.shape[1], warped.shape[0], QImage.Format_RGB888).rgbSwapped()
+                pixmap = QPixmap.fromImage(img)
+                self.videoWraped.setPixmap(pixmap)
 
             
 
