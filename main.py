@@ -43,7 +43,7 @@ class UI_Window(QWidget):
                 self.camerasNames["Camera " + str(index)] = c
                 camerasList.append("Camera " + str(index))
                 index += 1
-                
+
             if len(self.cameras) > 0:
                 self.cap = cv2.VideoCapture(self.cameras[0])
                 self.webCamFeed = True
@@ -226,7 +226,7 @@ class UI_Window(QWidget):
                 
 
                 # colors magic
-                # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)W
+                # warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
                 # T = threshold_local(warped, 11, offset = 10, method = "gaussian")
                 # warped = (warped > T).astype("uint8") * 255
 
