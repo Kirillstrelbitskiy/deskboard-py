@@ -110,7 +110,7 @@ class UI_Window(QWidget):
 
             coorLine = QHBoxLayout()
             rotateCounterClockwise = QPushButton()
-            rotateCounterClockwise.setIcon(QIcon('icons/clockwise.png'))
+            rotateCounterClockwise.setIcon(QIcon('clockwise.png'))
             rotateCounterClockwise.setIconSize(QSize(50, 50))  
             rotateCounterClockwise.resize(50, 50)
             rotateCounterClockwise.clicked.connect(self.changeAngle)
