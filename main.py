@@ -1,22 +1,19 @@
 from pyvirtualcam import PixelFormat
 from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox, QSlider, QComboBox
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import QThread, QTimer, Qt
+from PyQt5.QtCore import QThread, QTimer, Qt, QSize
+from PyQt5.QtGui import QIcon
 from imutils.perspective import four_point_transform
 from cv2 import cv2
 import numpy as np
 import argparse, imutils, time, helpers
 import pyvirtualcam
 
-
-# helpers.initializeTrackbars()
-
-# cap = cv2.VideoCapture(0)
 heightImg = 1080
 widthImg  = 1920
-
 heightImgSmall = 360
 widthImgSmall = 640
+
 # helpers.set_res(cap, widthImg, heightImg)
 
 min_diff = 3
@@ -32,29 +29,41 @@ class UI_Window(QWidget):
             self.timer = QTimer()
             self.timer.timeout.connect(self.nextFrameSlot)
             
+            self.angle = 0
             self.streamActivated = False
             self.webCamFeed = False
+            self.cam = pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR)
 
             # cameras activation
             self.findCameras()
+            self.camerasNames = {}
+            camerasList = []
+            index = 1
+            for c in self.cameras:
+                self.camerasNames["Camera " + str(index)] = c
+                camerasList.append("Camera " + str(index))
+                index += 1
+                
             if len(self.cameras) > 0:
                 self.cap = cv2.VideoCapture(self.cameras[0])
                 self.webCamFeed = True
 
-            layout = QGridLayout()
+            layout = QHBoxLayout()
             layout.setSpacing(10)
             
+            layoutLeft = QVBoxLayout()
+            layoutRight= QVBoxLayout()
             listCamerasLayout = QHBoxLayout()
             listCameras = QComboBox()
-            listCameras.addItems(map(str, self.cameras))
-            listCameras.activated[int].connect(self.changeCamera)
+            listCameras.addItems(map(str, camerasList))
+            listCameras.activated[str].connect(self.changeCamera)
 
             labelCameras = QLabel()
             labelCameras.setText("Select camera from the list:")
 
             listCamerasLayout.addWidget(labelCameras)
             listCamerasLayout.addWidget(listCameras)
-            layout.addLayout(listCamerasLayout, 0, 0)
+            layoutLeft.addLayout(listCamerasLayout)
 
             # video previewes
             self.videoOrig = QLabel()
@@ -64,12 +73,15 @@ class UI_Window(QWidget):
             self.videoWraped = QLabel()
             self.videoWraped.setFixedSize(widthImgSmall, heightImgSmall)
             
-            layout.addWidget(self.videoOrig, 0, 1)
-            layout.addWidget(self.videoLines, 1, 1)
-            layout.addWidget(self.videoWraped, 2, 1)
+            layoutRight.addWidget(self.videoOrig)
+            layoutRight.addWidget(self.videoLines)
+            layoutRight.addWidget(self.videoWraped)
 
             # sliders seetings
+            labelSlider = QLabel("Find your optimal params")
             sliders_layout = QVBoxLayout()
+            sliders_layout.addWidget(labelSlider)
+
             self.val1_sl = QSlider(Qt.Horizontal)
             self.val1_sl.setMinimum(0)
             self.val1_sl.setMaximum(300)
@@ -86,25 +98,53 @@ class UI_Window(QWidget):
             self.val2_sl.setTickPosition(QSlider.TicksBelow)
             self.val2_sl.setTickInterval(2)
 
+            sliders_layout.setAlignment(Qt.AlignCenter)
             sliders_layout.addWidget(self.val2_sl)
 
-            layout.addLayout(sliders_layout, 1, 0)
+            layoutLeft.addLayout(sliders_layout)
+
+            # image corrections
+            corrLayout = QVBoxLayout()
+            labelCorr = QLabel("Flip the image")
+            corrLayout.addWidget(labelCorr)
+
+            coorLine = QHBoxLayout()
+            rotateCounterClockwise = QPushButton()
+            rotateCounterClockwise.setIcon(QIcon('icons/counter-clockwise.png'))
+            rotateCounterClockwise.setIconSize(QSize(50, 50))  
+            rotateCounterClockwise.resize(50, 50)
+            rotateCounterClockwise.clicked.connect(self.changeAngle)
+
+            coorLine.addWidget(rotateCounterClockwise)
+
+            corrLayout.addLayout(coorLine)
+            corrLayout.setAlignment(Qt.AlignVCenter)
+
+            layoutLeft.addLayout(corrLayout)
 
             # stream activation
-            btnActivate = QPushButton("Start stream")
-            btnActivate.clicked.connect(self.activateStream)
-            layout.addWidget(btnActivate, 2, 0)
+            layoutStream = QHBoxLayout()
+            self.btnChangeState = QPushButton("Start stream")
+            self.btnChangeState.clicked.connect(self.changeStream)
+            self.labelStream = QLabel("You're offline")
 
+            layoutStream.addWidget(self.labelStream)
+            layoutStream.addWidget(self.btnChangeState)
+            layoutLeft.addLayout(layoutStream)
+
+            layout.addLayout(layoutLeft)
+            layout.addLayout(layoutRight)
             self.setLayout(layout)
-            self.setWindowTitle("First GUI with QT")
+            self.setWindowTitle("DeskBoard")
             # self.setFixedSize(widthImg, heightImg)
 
             self.timer.start(1000. / 24)  
     
     def changeCamera(self, camera):
+        cameraIndex = self.camerasNames[camera]
         if self.cap.isOpened():
             self.cap.release()
-        self.cap = cv2.VideoCapture(camera)
+        self.cap = cv2.VideoCapture(cameraIndex)
 
     def findCameras(self):
         num = 100
@@ -116,11 +156,20 @@ class UI_Window(QWidget):
             device.release()
 
         print(self.cameras)
+    
+    def changeAngle(self):
+        self.angle += 180
 
-    def activateStream(self):
-        self.streamActivated = True
-        self.cam = pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR)
-
+    def changeStream(self):
+        if not self.streamActivated:
+            self.streamActivated = True
+            self.btnChangeState.setText("Stop stream")
+            self.labelStream.setText("You're online")
+        else:
+            self.streamActivated = False
+            self.btnChangeState.setText("Start stream")
+            self.labelStream.setText("You're offline")
+ 
     def nextFrameSlot(self):
         global prev_exist
         global prev_screenCnt
@@ -138,7 +187,6 @@ class UI_Window(QWidget):
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             gray = cv2.GaussianBlur(gray, (5, 5), 1)
 
-            # val = helpers.valTrackbars()
             val = [self.val1_sl.value(), self.val2_sl.value()]
             edged = cv2.Canny(gray, val[0], val[1])
 
@@ -185,8 +233,10 @@ class UI_Window(QWidget):
                 # cv2.imshow("OO", image_original)
                 # cv2.imshow("Warped", warped)
                 
+
                 warped = cv2.resize(warped, (widthImg, heightImg))
-                
+                warped = helpers.rotateImage(warped, self.angle)
+
                 if self.streamActivated:
                     self.cam.send(warped)
                     self.cam.sleep_until_next_frame()
