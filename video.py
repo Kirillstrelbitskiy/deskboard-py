@@ -82,3 +82,5 @@ with pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR) as cam:
 
         if cv2.waitKey(1) and 0xFF == ord('s'):
             count += 1
+
+# pip3 install opencv-contrib-python-headless
