@@ -1,5 +1,5 @@
 from pyvirtualcam import PixelFormat
-from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox, QSlider
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, QTimer
 from imutils.perspective import four_point_transform
@@ -53,6 +53,13 @@ class UI_Window(QWidget):
         layout.addWidget(self.videoOrig, 0, 1)
         layout.addWidget(self.videoLines, 1, 1)
         layout.addWidget(self.videoWraped, 2, 1)
+
+        self.val1_sl = QSlider(Qt.Horizontal)
+        self.val1_sl.setMinimum(10)
+        self.val1_sl.setMaximum(30)
+        self.val1_sl.setValue(20)
+        self.val1_sl.setTickPosition(QSlider.TicksBelow)
+        self.val1_sl.setTickInterval(5)
 
         self.setLayout(layout)
         self.setWindowTitle("First GUI with QT")
