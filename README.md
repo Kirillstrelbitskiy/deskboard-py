@@ -1,5 +1,5 @@
 # DeskBoard - HUCUTHON
-## Додаток для трансляції рукописного матеріалу у відеоконференцію
+## An application for broadcasting handwritten material into video conferencing
 <br>
 
 ### Portable version
