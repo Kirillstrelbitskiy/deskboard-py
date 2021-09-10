@@ -1,4 +1,4 @@
-from pyvirtualcam import PixelFormat
+# from pyvirtualcam import PixelFormat
 from PyQt5.QtWidgets import QMessageBox, QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QApplication, QGridLayout, QHBoxLayout, QMessageBox, QSlider, QComboBox
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, QTimer, Qt, QSize
@@ -7,12 +7,12 @@ from imutils.perspective import four_point_transform
 from cv2 import cv2
 import numpy as np
 import argparse, imutils, time, helpers
-import pyvirtualcam
+# import pyvirtualcam
 
 heightImg = 1080
 widthImg  = 1920
-heightImgSmall = 360
-widthImgSmall = 640
+heightImgSmall = 240
+widthImgSmall = 380
 
 # helpers.set_res(cap, widthImg, heightImg)
 
@@ -32,20 +32,20 @@ class UI_Window(QWidget):
             self.angle = 0
             self.streamActivated = False
             self.webCamFeed = False
-            self.cam = pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR)
+            # self.cam = pyvirtualcam.Camera(widthImg, heightImg, 20, fmt=PixelFormat.BGR)
 
             # cameras activation
             self.findCameras()
             self.camerasNames = {}
             camerasList = []
-            index = 1
+            index = 2
             for c in self.cameras:
                 self.camerasNames["Camera " + str(index)] = c
                 camerasList.append("Camera " + str(index))
                 index += 1
 
             if len(self.cameras) > 0:
-                self.cap = cv2.VideoCapture(self.cameras[0])
+                self.cap = cv2.VideoCapture(self.cameras[1])
                 self.webCamFeed = True
 
             layout = QHBoxLayout()
@@ -237,9 +237,9 @@ class UI_Window(QWidget):
                 warped = cv2.resize(warped, (widthImg, heightImg))
                 warped = helpers.rotateImage(warped, self.angle)
 
-                if self.streamActivated:
-                    self.cam.send(warped)
-                    self.cam.sleep_until_next_frame()
+                # if self.streamActivated:
+                #     self.cam.send(warped)
+                #     self.cam.sleep_until_next_frame()
 
                 warped = cv2.resize(warped, (widthImgSmall, heightImgSmall))
 
